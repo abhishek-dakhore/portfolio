@@ -1,0 +1,294 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Music Player</title>
+  <link rel="stylesheet" href="style2.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    body {
+      background-color: #0d0d0d;
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .container {
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      color: #0ff;
+      text-shadow: 0 0 10px #0ff;
+    }
+    .search-bar {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    #search {
+      padding: 10px;
+      border: 2px solid #0ff;
+      background: transparent;
+      color: #fff;
+      border-radius: 5px;
+      width: 80%;
+      font-size: 1em;
+    }
+    .player {
+      background: #111;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px #0ff;
+      margin-bottom: 20px;
+    }
+    .controls button {
+      background: #000;
+      border: 2px solid #0ff;
+      color: #0ff;
+      padding: 10px;
+      border-radius: 50%;
+      margin: 5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .controls button:hover {
+      background: #0ff;
+      color: #000;
+      box-shadow: 0 0 10px #0ff;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    #song-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .playlist-item {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Advanced Music Player</h1>
+
+    <div class="search-bar">
+      <input type="text" id="search" placeholder="Search songs...">
+    </div>
+
+    <div class="player">
+      <p id="song-title">No song playing</p>
+      <audio id="audio" src=""></audio>
+
+      <div class="controls">
+        <button id="prev">⏮️</button>
+        <button id="play">▶️</button>
+        <button id="pause">⏸️</button>
+        <button id="next">⏭️</button>
+        <button id="vol-down">🔉</button>
+        <button id="vol-up">🔊</button>
+        <button id="mute">🔇</button>
+      </div>
+
+      <input type="range" id="progress" value="0" min="0" max="100">
+    </div>
+
+    <div class="playlist-section">
+      <button id="create-playlist">Create Playlist</button>
+      <ul id="playlist-list"></ul>
+    </div>
+
+    <div id="song-list"></div>
+  </div>
+
+  <script>
+    $(document).ready(function () {
+      const audio = $('#audio')[0];
+      const progress = $('#progress');
+      const titleDisplay = $('#song-title');
+      let currentPlaylist = [];
+      let currentIndex = 0;
+      const playlists = {};
+
+      function loadSong(index) {
+        if (currentPlaylist.length > 0 && index >= 0 && index < currentPlaylist.length) {
+          audio.src = currentPlaylist[index].url;
+          titleDisplay.text(currentPlaylist[index].name);
+          audio.play();
+        }
+      }
+
+      $('#play').click(() => audio.play());
+      $('#pause').click(() => audio.pause());
+
+      $('#next').click(() => {
+        if (currentIndex < currentPlaylist.length - 1) {
+          currentIndex++;
+          loadSong(currentIndex);
+        }
+      });
+
+      $('#prev').click(() => {
+        if (currentIndex > 0) {
+          currentIndex--;
+          loadSong(currentIndex);
+        }
+      });
+
+      $('#vol-up').click(() => {
+        audio.volume = Math.min(audio.volume + 0.1, 1);
+      });
+
+      $('#vol-down').click(() => {
+        audio.volume = Math.max(audio.volume - 0.1, 0);
+      });
+
+      $('#mute').click(() => {
+        audio.muted = !audio.muted;
+      });
+
+      audio.ontimeupdate = () => {
+        if (!isNaN(audio.duration)) {
+          const percent = (audio.currentTime / audio.duration) * 100;
+          progress.val(percent);
+        }
+      };
+
+      audio.onended = () => {
+        if (currentIndex < currentPlaylist.length - 1) {
+          currentIndex++;
+          loadSong(currentIndex);
+        }
+      };
+
+      progress.on('input', () => {
+        if (!isNaN(audio.duration)) {
+          const seekTime = (progress.val() / 100) * audio.duration;
+          audio.currentTime = seekTime;
+        }
+      });
+
+      $('#create-playlist').click(function () {
+        const name = prompt('Enter playlist name:');
+        if (name && !playlists[name]) {
+          playlists[name] = [];
+          renderPlaylists();
+        } else {
+          alert('Invalid or duplicate name.');
+        }
+      });
+
+      function showSongList(playlist) {
+        const listDiv = $('#song-list');
+        listDiv.empty();
+
+        if (playlist.length === 0) {
+          listDiv.append('<p>No songs in this playlist.</p>');
+        } else {
+          const ul = $('<ul>');
+          playlist.forEach((song, index) => {
+            const li = $('<li>').text(song.name).css('cursor', 'pointer');
+            li.click(() => {
+              currentIndex = index;
+              loadSong(index);
+            });
+            ul.append(li);
+          });
+          listDiv.append(ul);
+        }
+      }
+
+      function renderPlaylists() {
+        const list = $('#playlist-list');
+        list.empty();
+
+        for (const name in playlists) {
+          const li = $('<li>').addClass('playlist-item');
+          const count = playlists[name].length;
+          const title = $('<span>').text(`${name} (${count} songs)`).addClass('playlist-title');
+
+          const renameBtn = $('<button>').text('✏️').click(() => {
+            const newName = prompt('Enter new name:');
+            if (newName && !playlists[newName]) {
+              playlists[newName] = playlists[name];
+              delete playlists[name];
+              renderPlaylists();
+            } else {
+              alert('Invalid or duplicate name.');
+            }
+          });
+
+          const deleteBtn = $('<button>').text('🗑️').click(() => {
+            delete playlists[name];
+            renderPlaylists();
+            $('#song-list').empty();
+          });
+
+          const openBtn = $('<button>').text('📂').click(() => {
+            const input = $('<input type="file" accept="audio/*" multiple>').hide();
+            $('body').append(input);
+            input.on('change', function () {
+              const files = Array.from(this.files);
+              files.forEach(file => {
+                playlists[name].push({ url: URL.createObjectURL(file), name: file.name });
+              });
+              currentPlaylist = playlists[name];
+              currentIndex = 0;
+              loadSong(currentIndex);
+              renderPlaylists();
+              input.remove();
+              showSongList(playlists[name]);
+            });
+            input.click();
+          });
+
+          title.click(() => {
+            currentPlaylist = playlists[name];
+            currentIndex = 0;
+            showSongList(currentPlaylist);
+          });
+
+          li.append(title, openBtn, renameBtn, deleteBtn);
+          list.append(li);
+        }
+      }
+
+      $('#search').on('input', function () {
+        const term = $(this).val().toLowerCase();
+        let matchedSongs = [];
+
+        for (const name in playlists) {
+          matchedSongs.push(...playlists[name].filter(song => song.name.toLowerCase().includes(term)));
+        }
+
+        const listDiv = $('#song-list');
+        listDiv.empty();
+
+        if (matchedSongs.length === 0 && term.trim() !== '') {
+          const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(term)}`;
+          listDiv.append(`<p>No local songs found. <a href="${ytUrl}" target="_blank">Search on YouTube</a></p>`);
+        } else {
+          const ul = $('<ul>');
+          matchedSongs.forEach((song, index) => {
+            const li = $('<li>').text(song.name).css('cursor', 'pointer');
+            li.click(() => {
+              audio.src = song.url;
+              titleDisplay.text(song.name);
+              audio.play();
+            });
+            ul.append(li);
+          });
+          listDiv.append(ul);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
